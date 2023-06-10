@@ -1,11 +1,16 @@
 ﻿// fatck.c : fat file system check tools source file
 #include "fatck.h"
 
-#define GET32(x) (uint32_t)(*(x)) | ((uint32_t)*((x) + 1) << 8) | ((uint32_t)*((x) + 2) << 16) | ((uint32_t)*((x) + 3) << 24)
+#ifndef FATDEV_DPT_ADDRESS
+#define FATDEV_DPT_ADDRESS  (0x1BE)
+#endif
+
+#define GET_UINT32(x) (uint32_t)(*(x)) | ((uint32_t)*((x) + 1) << 8) | ((uint32_t)*((x) + 2) << 16) | ((uint32_t)*((x) + 3) << 24)
 
 static int fat_root_read(fatdev_t* device)
 {
     int result = -1;
+    uint8_t dpt_addr = 0;
     // get fat device sector count.
     device->sector_count = device->file_size / device->sector_size;
     // get fat device block size.
@@ -22,14 +27,14 @@ static int fat_root_read(fatdev_t* device)
         return result;
     }
     // get fat device start parttion.
-    if ((device->sector_buff[0x1BE] != 0x80) && (device->sector_buff[0x1BE] != 0x00))
+    dpt_addr = device->sector_buff[FATDEV_DPT_ADDRESS];
+    if ((dpt_addr != 0x80) && (dpt_addr != 0x00))
     {
-        device->part_begain = 0;
+        device->sector_start = 0;
     }
     else
     {
-        device->part_begain = GET32(&device->sector_buff[0x1BE] + 8);
-        printf("========== part begain = %d =========\r\n", device->part_begain);
+        device->sector_start = GET_UINT32(&device->sector_buff[FATDEV_DPT_ADDRESS] + 8);
     }
 }
 

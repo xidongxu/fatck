@@ -14,12 +14,12 @@
 typedef struct _fatdev
 {
 	int file_hand;
-	int file_size;
-	int sector_count;
-	int sector_size;
-	int block_size;
+	uint32_t file_size;
+	uint32_t sector_count;
+	uint32_t sector_size;
+	uint32_t sector_start;
 	uint8_t* sector_buff;
-	uint32_t part_begain;
+	uint32_t block_size;
 } fatdev_t;
 
 fatdev_t* fatdev_open(const char* path, int sector_size);
