@@ -20,7 +20,7 @@ typedef struct _fatdev
 	int block_size;
 } fatdev_t;
 
-fatdev_t* fatdev_open(const char* path, int sector_count, int sector_size, int block_size);
+fatdev_t* fatdev_open(const char* path, int sector_size);
 int fatdev_read(fatdev_t* device, uint8_t* buff, size_t size);
 int fatdev_write(fatdev_t* device, uint8_t* buff, size_t size);
 int fatdev_close(fatdev_t* device);

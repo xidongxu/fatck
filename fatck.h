@@ -4,18 +4,6 @@
 
 #include "fatdev.h"
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+int fatck(const char* path, int sector_size);
 
 #endif /* __FATCK_H__ */

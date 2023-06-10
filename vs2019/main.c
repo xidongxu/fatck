@@ -3,18 +3,13 @@
 #include <stdio.h>
 #include "fatck.h"
 
-static const char* file_path = "../test/fatfs.bin";
+static const char* file_fail_path = "../test/read_fail.bin";
+static const char* file_good_path = "../test/read_good.bin";
 
 int main(void)
 {
     int result = 0;
-    fatdev_t* device = NULL;
-
     printf("Hello World!\n");
-    device = fatdev_open(file_path, 0, 4096, 4096);
-    if (device != NULL)
-    {
-        result = fatck(device);
-    }
+    result = fatck(file_good_path, 4096);
     return result;
 }
