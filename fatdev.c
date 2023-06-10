@@ -43,12 +43,18 @@ fatdev_t* fatdev_open(const char* path, int sector_size)
 	return device;
 }
 
-int fatdev_read(fatdev_t* device, uint8_t *buff, size_t size)
+int fatdev_read(fatdev_t* device, size_t offset, uint8_t *buff, size_t size)
 {
 	int result = 0;
 	if ((device == NULL) || (device->file_hand < 0) || (buff == NULL) || (size <= 0))
 	{
 		printf("fat device read failed, parameter is null.\r\n");
+		return -1;
+	}
+	result = lseek(device->file_hand, offset, SEEK_SET);
+	if (result < 0)
+	{
+		printf("fat device read lseek offset %d failed.\r\n", offset);
 		return -1;
 	}
 	result = read(device->file_hand, buff, size);
@@ -60,12 +66,18 @@ int fatdev_read(fatdev_t* device, uint8_t *buff, size_t size)
 	return result;
 }
 
-int fatdev_write(fatdev_t* device, uint8_t *buff, size_t size)
+int fatdev_write(fatdev_t* device, size_t offset, uint8_t *buff, size_t size)
 {
 	int result = 0;
 	if ((device == NULL) || (device->file_hand < 0) || (buff == NULL) || (size <= 0))
 	{
 		printf("fat device write failed, parameter is null.\r\n");
+		return -1;
+	}
+	result = lseek(device->file_hand, offset, SEEK_SET);
+	if (result < 0)
+	{
+		printf("fat device write lseek to %d failed.\r\n", offset);
 		return -1;
 	}
 	result = write(device->file_hand, buff, size);

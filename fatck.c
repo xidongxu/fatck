@@ -14,28 +14,35 @@ static int fat_root_read(fatdev_t* device)
     // get fat device sector count.
     device->sector_count = device->file_size / device->sector_size;
     // get fat device block size.
-    device->sector_buff = (uint8_t*)malloc(device->sector_size * sizeof(uint8_t));
+    device->sector_buff = (uint8_t*)calloc(1, device->sector_size * sizeof(uint8_t));
     if (device->sector_buff == NULL)
     {
         printf("fat device sector buffer malloc failed.\r\n");
         return result;
     }
-    result = fatdev_read(device, device->sector_buff, device->sector_size);
+    result = fatdev_read(device, 0, device->sector_buff, device->sector_size);
     if (result != device->sector_size)
     {
-        printf("fat root read failed.\r\n");
+        printf("fat root get dpt address failed.\r\n");
         return result;
     }
     // get fat device start parttion.
     dpt_addr = device->sector_buff[FATDEV_DPT_ADDRESS];
     if ((dpt_addr != 0x80) && (dpt_addr != 0x00))
     {
-        device->sector_start = 0;
+        device->part_start = 0;
     }
     else
     {
-        device->sector_start = GET_UINT32(&device->sector_buff[FATDEV_DPT_ADDRESS] + 8);
+        device->part_start = GET_UINT32(&device->sector_buff[FATDEV_DPT_ADDRESS] + 8);
     }
+    result = fatdev_read(device, (device->part_start * device->sector_size), device->sector_buff, device->sector_size);
+    if (result != device->sector_size)
+    {
+        printf("fat root read start parttion failed.\r\n");
+        return result;
+    }
+    return 0;
 }
 
 int fatck(const char* path, int sector_size)

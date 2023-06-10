@@ -17,14 +17,14 @@ typedef struct _fatdev
 	uint32_t file_size;
 	uint32_t sector_count;
 	uint32_t sector_size;
-	uint32_t sector_start;
+	uint32_t part_start;
 	uint8_t* sector_buff;
 	uint32_t block_size;
 } fatdev_t;
 
 fatdev_t* fatdev_open(const char* path, int sector_size);
-int fatdev_read(fatdev_t* device, uint8_t* buff, size_t size);
-int fatdev_write(fatdev_t* device, uint8_t* buff, size_t size);
+int fatdev_read(fatdev_t* device, size_t offset, uint8_t* buff, size_t size);
+int fatdev_write(fatdev_t* device, size_t offset, uint8_t* buff, size_t size);
 int fatdev_close(fatdev_t* device);
 
 #endif /* __FATDEV_H__ */
