@@ -21,9 +21,15 @@
     <ClCompile Include="..\fatck.c">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="..\fatdev.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\fatck.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\fatdev.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

@@ -2,7 +2,7 @@
 #ifndef __FATCK_H__
 #define __FATCK_H__
 
-
+#include "fatdev.h"
 
 
 
