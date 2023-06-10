@@ -18,6 +18,8 @@ typedef struct _fatdev
 	int sector_count;
 	int sector_size;
 	int block_size;
+	uint8_t* sector_buff;
+	uint32_t part_begain;
 } fatdev_t;
 
 fatdev_t* fatdev_open(const char* path, int sector_size);
