@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include "fatck.h"
 
-static const char* path = "../test/system.bin";
+static const char* path = "../testcase/system.bin";
 
 int main(void)
 {
