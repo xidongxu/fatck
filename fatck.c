@@ -257,7 +257,8 @@ static int fat_root_read(fatdev_t* device)
             printf("free count is wrong.\r\n");
         }
     }
-    else {
+    else 
+    {
         /* FAT 12/16 */
         fatfs->root_dir_sector = bpb->BPB_RsvdSecCnt + (bpb->BPB_NumFATs * bpb->BPB_FATSz16);
     }
