@@ -139,40 +139,39 @@ static int fat_root_read(fat_ck_t* fc)
     uint8_t* sec_bpb = NULL;
     fat_fs_t* fatfs = &fc->fatfs;
     fat_bpb_t* bpb = &fatfs->bpb;
-    fat_dev_t* device = fc->device;
     // get fat device sector count.
-    device->sector_count = device->file_size / device->sector_size;
+    fc->device->sector_count = fc->device->file_size / fc->device->sector_size;
     // get fat device block size.
-    device->sector_buff = (uint8_t*)calloc(1, device->sector_size * sizeof(uint8_t));
-    if (device->sector_buff == NULL)
+    fc->sector_buffer = (uint8_t*)calloc(1, fc->device->sector_size * sizeof(uint8_t));
+    if (fc->sector_buffer == NULL)
     {
-        printf("fat device sector buffer malloc failed.\r\n");
+        printf("fat check object sector buffer malloc failed.\r\n");
         return result;
     }
-    result = fat_dev_read(device, 0, device->sector_buff, device->sector_size);
-    if (result != device->sector_size)
+    result = fat_dev_read(fc->device, 0, fc->sector_buffer, fc->device->sector_size);
+    if (result != fc->device->sector_size)
     {
         printf("fat root get dpt address failed.\r\n");
         return result;
     }
     // get fat device start parttion.
-    dpt_addr = device->sector_buff[FAT_DPT_ADDRESS];
+    dpt_addr = fc->sector_buffer[FAT_DPT_ADDRESS];
     if ((dpt_addr != 0x80) && (dpt_addr != 0x00))
     {
-        device->part_start = 0;
+        fc->device->part_start = 0;
     }
     else
     {
-        device->part_start = FAT_GET_UINT32(&device->sector_buff[FAT_DPT_ADDRESS] + 8);
+        fc->device->part_start = FAT_GET_UINT32(&fc->sector_buffer[FAT_DPT_ADDRESS] + 8);
     }
-    result = fat_dev_read(device, (device->part_start * device->sector_size), device->sector_buff, device->sector_size);
-    if (result != device->sector_size)
+    result = fat_dev_read(fc->device, (fc->device->part_start * fc->device->sector_size), fc->sector_buffer, fc->device->sector_size);
+    if (result != fc->device->sector_size)
     {
         printf("fat root read start parttion failed.\r\n");
         return result;
     }
     // get fat device bpb sector.
-    sec_bpb = device->sector_buff;
+    sec_bpb = fc->sector_buffer;
     // parse the bpb information.
     strncpy(bpb->BS_OEMName, (char*)&sec_bpb[BS_OEMNAME], (sizeof(bpb->BS_OEMName) - 1));
     bpb->BS_OEMName[8] = 0;
@@ -259,8 +258,8 @@ static int fat_root_read(fat_ck_t* fc)
         fatfs->root_dir_sector = first_sector_of_cluster(fatfs, bpb->BPB_RootClus);
 
         /* read file system info */
-        result = fat_dev_read(device, (device->part_start * (device->sector_size + 1)), device->sector_buff, device->sector_size);
-        if (result != device->sector_size)
+        result = fat_dev_read(fc->device, (fc->device->part_start * (fc->device->sector_size + 1)), fc->sector_buffer, fc->device->sector_size);
+        if (result != fc->device->sector_size)
         {
             /* clean FAT filesystem entry */
             memset(fatfs, 0, sizeof(struct fat_fs));

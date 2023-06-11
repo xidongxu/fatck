@@ -18,7 +18,6 @@ typedef struct fat_dev
     uint32_t sector_count;
     uint32_t sector_size;
     uint32_t part_start;
-    uint8_t* sector_buff;
     uint32_t block_size;
 } fat_dev_t;
 
