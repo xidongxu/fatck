@@ -137,7 +137,7 @@ static int fat_root_read(fat_ck_t* fc)
     int result = -1;
     uint8_t dpt_addr = 0;
     uint8_t* sec_bpb = NULL;
-    fat_fs_t* fatfs = (fat_fs_t*)calloc(1, sizeof(fat_fs_t));
+    fat_fs_t* fatfs = &fc->fatfs;
     fat_bpb_t* bpb = &fatfs->bpb;
     fat_dev_t* device = fc->device;
     // get fat device sector count.
