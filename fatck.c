@@ -7,10 +7,48 @@
 
 #define GET_UINT32(x) (uint32_t)(*(x)) | ((uint32_t)*((x) + 1) << 8) | ((uint32_t)*((x) + 2) << 16) | ((uint32_t)*((x) + 3) << 24)
 
+typedef struct fat_bpb 
+{
+    // FAT12/16/32 common field (offset from 0 to 35)
+    uint8_t  BS_OEMName[9];
+    uint16_t BPB_BytsPerSec;
+    uint8_t  BPB_SecPerClus;
+    uint16_t BPB_RsvdSecCnt;
+    uint8_t  BPB_NumFATs_16;
+    uint16_t BPB_RootEntCnt;
+    uint16_t BPB_TotSec16;
+    uint8_t  BPB_Media;
+    uint16_t BPB_FATSz16;
+    uint16_t BPB_SecPerTrk;
+    uint16_t BPB_NumHeads;
+    uint32_t BPB_HiddSec;
+    uint32_t BPB_TotSec32;
+
+    // Fields for FAT12/16 volumes (offset from 36)
+    uint8_t  BS_DrvNum;
+    uint8_t  BS_Reserved;
+    uint8_t  BS_BootSig;
+    uint32_t BS_VolID;
+    uint8_t  BS_VolLab[12];
+    uint8_t  BS_FilSysType[9];
+    uint8_t  BS_BootCode[449];
+    uint16_t BS_BootSign;
+
+    // Fields for FAT32 volumes (offset from 36)
+    uint32_t BPB_FATSz32;
+    uint16_t BPB_ExtFlags;
+    uint16_t BPB_FSVer;
+    uint32_t BPB_RootClus;
+    uint16_t BPB_FSInfo;
+    uint16_t BPB_BkBootSec;
+    uint8_t  BPB_Reserved[12];
+} fat_bpb_t;
+
 static int fat_root_read(fatdev_t* device)
 {
     int result = -1;
     uint8_t dpt_addr = 0;
+    uint8_t* sec_bpb = NULL;
     // get fat device sector count.
     device->sector_count = device->file_size / device->sector_size;
     // get fat device block size.
@@ -42,6 +80,9 @@ static int fat_root_read(fatdev_t* device)
         printf("fat root read start parttion failed.\r\n");
         return result;
     }
+    // get fat device bpb sector.
+    sec_bpb = device->sector_buff;
+
     return 0;
 }
 
