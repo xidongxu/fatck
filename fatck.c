@@ -112,15 +112,34 @@ typedef struct fat_fs
     uint32_t next_free;
 } fat_fs_t;
 
+typedef struct fat_ck
+{
+    fat_dev_t* device;
+    fat_fs_t fatfs;
+    uint8_t* sector_buffer;
+    uint32_t sector_size;
+    uint32_t current_sector;
+    uint32_t part_begin;
+    uint16_t need_sync;
+    uint16_t fat_check;
+    //struct list_node node_head;
+    uint8_t  test_flag;
+    uint8_t  dir_deep;
+    uint8_t* lfnbuf;
+    uint8_t* fnbuf;
+    int error;
+} fat_ck_t;
+
 #define first_sector_of_cluster(fatfs, cluster) (((cluster)-2) * (fatfs)->bpb.BPB_SecPerClus + (fatfs)->first_data_sector)
 
-static int fat_root_read(fatdev_t* device)
+static int fat_root_read(fat_ck_t* fc)
 {
     int result = -1;
     uint8_t dpt_addr = 0;
     uint8_t* sec_bpb = NULL;
     fat_fs_t* fatfs = (fat_fs_t*)calloc(1, sizeof(fat_fs_t));
     fat_bpb_t* bpb = &fatfs->bpb;
+    fat_dev_t* device = fc->device;
     // get fat device sector count.
     device->sector_count = device->file_size / device->sector_size;
     // get fat device block size.
@@ -130,7 +149,7 @@ static int fat_root_read(fatdev_t* device)
         printf("fat device sector buffer malloc failed.\r\n");
         return result;
     }
-    result = fatdev_read(device, 0, device->sector_buff, device->sector_size);
+    result = fat_dev_read(device, 0, device->sector_buff, device->sector_size);
     if (result != device->sector_size)
     {
         printf("fat root get dpt address failed.\r\n");
@@ -146,7 +165,7 @@ static int fat_root_read(fatdev_t* device)
     {
         device->part_start = FAT_GET_UINT32(&device->sector_buff[FAT_DPT_ADDRESS] + 8);
     }
-    result = fatdev_read(device, (device->part_start * device->sector_size), device->sector_buff, device->sector_size);
+    result = fat_dev_read(device, (device->part_start * device->sector_size), device->sector_buff, device->sector_size);
     if (result != device->sector_size)
     {
         printf("fat root read start parttion failed.\r\n");
@@ -240,7 +259,7 @@ static int fat_root_read(fatdev_t* device)
         fatfs->root_dir_sector = first_sector_of_cluster(fatfs, bpb->BPB_RootClus);
 
         /* read file system info */
-        result = fatdev_read(device, (device->part_start * (device->sector_size + 1)), device->sector_buff, device->sector_size);
+        result = fat_dev_read(device, (device->part_start * (device->sector_size + 1)), device->sector_buff, device->sector_size);
         if (result != device->sector_size)
         {
             /* clean FAT filesystem entry */
@@ -279,21 +298,36 @@ static int fat_root_read(fatdev_t* device)
     return 0;
 }
 
+static int fat_root_check(fat_ck_t* fc)
+{
+
+}
+
 int fatck(const char* path, int sector_size)
 {
     int result = -1;
-    fatdev_t* device = NULL;
-    device = fatdev_open(path, sector_size);
-    if (device == NULL)
+    fat_ck_t *fc = (fat_ck_t*)calloc(1, sizeof(fat_ck_t));
+    if (fc == NULL)
     {
+        printf("fat check object create failed.\r\n");
         return result;
     }
-    result = fat_root_read(device);
+    fc->device = fat_dev_open(path, sector_size);
+    if (fc->device == NULL)
+    {
+        printf("fat device object open failed.\r\n");
+        return result;
+    }
+    result = fat_root_read(fc);
     if (result < 0)
     {
-        printf("fat device root init failed.\r\n");
+        printf("fat device root read failed.\r\n");
     }
-
-    fatdev_close(device);
+    result = fat_root_check(fc);
+    if (result < 0)
+    {
+        printf("fat device root check failed.\r\n");
+    }
+    fat_dev_close(fc->device);
 	return result;
 }
