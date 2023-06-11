@@ -112,7 +112,7 @@ typedef struct fat_fs
     uint32_t next_free;
 } fat_fs_t;
 
-#define first_sector_of_cluster(fatfs, cluster) ((cluster)-2) * (fatfs)->bpb.BPB_SecPerClus + (fatfs)->first_data_sector
+#define first_sector_of_cluster(fatfs, cluster) (((cluster)-2) * (fatfs)->bpb.BPB_SecPerClus + (fatfs)->first_data_sector)
 
 static int fat_root_read(fatdev_t* device)
 {
