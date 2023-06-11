@@ -328,5 +328,14 @@ int fatck(const char* path, int sector_size)
         printf("fat device root check failed.\r\n");
     }
     fat_dev_close(fc->device);
-	return result;
+    if (fc->device != NULL)
+    {
+        free(fc->device);
+    }
+    if (fc->sector_buffer != NULL)
+    {
+        free(fc->sector_buffer);
+    }
+    free(fc);
+    return result;
 }
