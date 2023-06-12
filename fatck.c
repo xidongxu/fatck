@@ -110,6 +110,13 @@ typedef struct fat_fs
     uint32_t data_clusters;
     uint32_t free_count;
     uint32_t next_free;
+
+    uint32_t fats_sector_start;
+    uint32_t fats_sector_count;
+    uint32_t root_sector_start;
+    uint32_t root_sector_count;
+    uint32_t data_sector_start;
+    uint32_t data_sector_count;
 } fat_fs_t;
 
 typedef struct fat_ck
@@ -299,7 +306,20 @@ static int fat_root_read(fat_ck_t* fc)
 
 static int fat_root_check(fat_ck_t* fc)
 {
+    fat_bpb_t* bpb = &fc->fatfs.bpb;
+    fc->fatfs.fats_sector_start = bpb->BPB_RsvdSecCnt;
+    fc->fatfs.fats_sector_count = bpb->BPB_FATSz16 * bpb->BPB_NumFATs;
+    fc->fatfs.root_sector_start = fc->fatfs.fats_sector_start + fc->fatfs.fats_sector_count;
+    fc->fatfs.root_sector_count = (32 * bpb->BPB_RootEntCnt + bpb->BPB_BytsPerSec - 1) / bpb->BPB_BytsPerSec;
+    fc->fatfs.data_sector_start = fc->fatfs.root_sector_start + fc->fatfs.root_sector_count;
+    fc->fatfs.data_sector_count = bpb->BPB_TotSec16 - fc->fatfs.data_sector_start;
 
+    printf("fats_sector_start %d.\r\n", fc->fatfs.fats_sector_start);
+    printf("fats_sector_count %d.\r\n", fc->fatfs.fats_sector_count);
+    printf("root_sector_start %d.\r\n", fc->fatfs.root_sector_start);
+    printf("root_sector_count %d.\r\n", fc->fatfs.root_sector_count);
+    printf("data_sector_start %d.\r\n", fc->fatfs.data_sector_start);
+    printf("data_sector_count %d.\r\n", fc->fatfs.data_sector_count);
 }
 
 int fatck(const char* path, int sector_size)
