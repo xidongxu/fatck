@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge shelf="Merge bin files">
+   <bin name="system.bin">
+      <offset>0x00000000</offset>
+      <length>0x04500000</length>
+   </bin>
+   <bin name="download.bin">
+      <offset>0x04500000</offset>
+      <length>0x03200000</length>
+   </bin>
+   <bin name="user.bin">
+      <offset>0x07700000</offset>
+      <length>0x01800000</length>
+   </bin>
+   <bin name="data.bin">
+      <offset>0x08F00000</offset>
+      <length>0x05600000</length>
+   </bin>
+   <bin name="logs.bin">
+      <offset>0x0E500000</offset>
+      <length>0x00A00000</length>
+   </bin>
+   <bin name="will.bin">
+      <offset>0x0EF00000</offset>
+      <length>0x00100000</length>
+   </bin>
+</merge>
