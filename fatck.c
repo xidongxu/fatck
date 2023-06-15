@@ -319,7 +319,7 @@ static int fat_root_read(fat_ck_t* fc)
 static int fat_fats_check(fat_ck_t* fc, uint32_t addr)
 {
     int result = -1;
-    uint8_t fat_info[2] = { 0x00 };
+    uint8_t  fat_info[2] = { 0x00 };
     uint16_t value = 0;
     uint16_t count = 0;
     uint32_t index_addr = addr + (2 * sizeof(fat_info));
@@ -368,6 +368,20 @@ static int fat_fats_check(fat_ck_t* fc, uint32_t addr)
     return result;
 }
 
+static int fat_fats_value(fat_ck_t* fc, uint32_t cluster)
+{
+    int result = -1;
+    uint8_t  fat_info[2] = { 0x00 };
+    uint32_t fat_addr = (fc->fatfs.fats_sector_start * fc->device->sector_size) + (cluster * sizeof(fat_info));
+    result = fat_dev_read(fc->device, fat_addr, fat_info, sizeof(fat_info));
+    if (result == sizeof(fat_info))
+    {
+        printf("addr 0x%08X cluster value: 0x%04X.\r\n", fat_addr, FAT_GET_UINT16(&fat_info[0]));
+        return FAT_GET_UINT16(&fat_info[0]);
+    }
+    return -1;
+}
+
 static int fat_data_check(fat_ck_t* fc, uint32_t addr)
 {
     int result = -1;
@@ -393,6 +407,8 @@ static int fat_data_check(fat_ck_t* fc, uint32_t addr)
             printf("DIR_WrtDate      : %d \r\n", FAT_GET_UINT16(&dir_info[24]));
             printf("DIR_FstClusLO    : %d \r\n", FAT_GET_UINT16(&dir_info[26]));
             printf("DIR_FileSize     : %d \r\n", FAT_GET_UINT32(&dir_info[28]));
+
+            uint16_t cluster_value = fat_fats_value(fc, FAT_GET_UINT16(&dir_info[26]));
             addr = addr + sizeof(dir_info);
         }
         else
@@ -425,11 +441,11 @@ static int fat_root_check(fat_ck_t* fc)
     printf("data_sector_count %d.\r\n", fc->fatfs.data_sector_count);
     
     // process fat table
-    size_t fats_addr = (fc->fatfs.fats_sector_start * fc->device->sector_size);
+    uint32_t fats_addr = (fc->fatfs.fats_sector_start * fc->device->sector_size);
     fat_fats_check(fc, fats_addr);
 
     // process fat root directory
-    size_t root_addr = (fc->fatfs.root_sector_start * fc->device->sector_size);
+    uint32_t root_addr = (fc->fatfs.root_sector_start * fc->device->sector_size);
     fat_data_check(fc, root_addr);
 
     // process fat data
