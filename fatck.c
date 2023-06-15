@@ -1,4 +1,4 @@
-﻿// fatck.c : fat file system check tools source file
+// fatck.c : fat file system check tools source file
 #include "fatck.h"
 
 // FAT12/16/32 common field (offset from 0 to 35)
@@ -139,6 +139,18 @@ typedef struct fat_ck
 
 #define first_sector_of_cluster(fatfs, cluster) (((cluster)-2) * (fatfs)->bpb.BPB_SecPerClus + (fatfs)->first_data_sector)
 
+static int fat_name_tolower(char* name, size_t size)
+{
+    int index = 0;
+    for (index = 0; index < size; index++)
+    {
+        if (name[index] >= 'A' && name[index] <= 'Z')
+        {
+            name[index] = tolower(name[index]);
+        }
+    }
+}
+
 static int fat_root_read(fat_ck_t* fc)
 {
     int result = -1;
@@ -265,7 +277,7 @@ static int fat_root_read(fat_ck_t* fc)
         fatfs->root_dir_sector = first_sector_of_cluster(fatfs, bpb->BPB_RootClus);
 
         /* read file system info */
-        result = fat_dev_read(fc->device, (fc->device->part_start * (fc->device->sector_size + 1)), fc->sector_buffer, fc->device->sector_size);
+        result = fat_dev_read(fc->device, ((fc->device->part_start + 1) * fc->device->sector_size), fc->sector_buffer, fc->device->sector_size);
         if (result != fc->device->sector_size)
         {
             /* clean FAT filesystem entry */
@@ -304,22 +316,123 @@ static int fat_root_read(fat_ck_t* fc)
     return 0;
 }
 
+static int fat_fats_check(fat_ck_t* fc, uint32_t addr)
+{
+    int result = -1;
+    uint8_t fat_info[2] = { 0x00 };
+    uint16_t value = 0;
+    uint16_t count = 0;
+    uint32_t index_addr = addr + (2 * sizeof(fat_info));
+    uint32_t start_addr = 0;
+    
+    while (true)
+    {
+        result = fat_dev_read(fc->device, index_addr, fat_info, sizeof(fat_info));
+        if (result == sizeof(fat_info))
+        {
+            value = FAT_GET_UINT16(&fat_info[0]);
+            if (value == 0x0000)
+            {
+                printf("Addr [0x%08X - 0x%08X]: %-4d Clusters Free.\r\n", index_addr, index_addr, 1);
+                break;
+            }
+            else if (value == 0x0001)
+            {
+                printf("Addr [0x%08X - 0x%08X]: %-4d Clusters Reserved.\r\n", index_addr, index_addr, 1);
+            }
+            else if ((value > 0x0002) && (value <= 0xFFF6))
+            {
+                count = count + 1;
+                start_addr = (start_addr == 0) ? index_addr : start_addr;
+            }
+            else if (value == 0xFFF7)
+            {
+                printf("Addr [0x%08X - 0x%08X]: %-4d Clusters Bad.\r\n", index_addr, index_addr, 1);
+            }
+            else if ((value >= 0xFFF8) && (value <= 0xFFFF))
+            {
+                count = (start_addr == 0) ? 1 : count + 1;
+                start_addr = (start_addr == 0) ? index_addr : start_addr;
+                printf("Addr [0x%08X - 0x%08X]: %-4d Clusters Use.\r\n", start_addr, index_addr, count);
+                start_addr = 0;
+                count = 0;
+            }
+            index_addr = index_addr + sizeof(fat_info);
+        }
+        else
+        {
+            result = 0;
+            break;
+        }
+    }
+    return result;
+}
+
+static int fat_data_check(fat_ck_t* fc, uint32_t addr)
+{
+    int result = -1;
+    uint8_t dir_info[32] = { 0x00 };
+    uint8_t dir_name[12] = { 0x00 };
+    
+    while (true)
+    {
+        result = fat_dev_read(fc->device, addr, dir_info, sizeof(dir_info));
+        if ((result == sizeof(dir_info)) && (dir_info[0] != '\0'))
+        {
+            strncpy(dir_name, dir_info, sizeof(dir_name) - 1);
+            printf("\r\n");
+            printf("DIR_Name         : %s \r\n", dir_name);
+            printf("DIR_Attr         : %d \r\n", dir_info[11]);
+            printf("DIR_NTRes        : %d \r\n", dir_info[12]);
+            printf("DIR_CrtTimeTenth : %d \r\n", dir_info[13]);
+            printf("DIR_CrtTime      : %d \r\n", FAT_GET_UINT16(&dir_info[14]));
+            printf("DIR_CrtDate      : %d \r\n", FAT_GET_UINT16(&dir_info[16]));
+            printf("DIR_LstAccDate   : %d \r\n", FAT_GET_UINT16(&dir_info[18]));
+            printf("DIR_FstClusHI    : %d \r\n", FAT_GET_UINT16(&dir_info[20]));
+            printf("DIR_WrtTime      : %d \r\n", FAT_GET_UINT16(&dir_info[22]));
+            printf("DIR_WrtDate      : %d \r\n", FAT_GET_UINT16(&dir_info[24]));
+            printf("DIR_FstClusLO    : %d \r\n", FAT_GET_UINT16(&dir_info[26]));
+            printf("DIR_FileSize     : %d \r\n", FAT_GET_UINT32(&dir_info[28]));
+            addr = addr + sizeof(dir_info);
+        }
+        else
+        {
+            result = 0;
+            break;
+        }
+    }
+    return result;
+}
+
 static int fat_root_check(fat_ck_t* fc)
 {
+    int result = -1;
+
     fat_bpb_t* bpb = &fc->fatfs.bpb;
-    fc->fatfs.fats_sector_start = bpb->BPB_RsvdSecCnt;
+    fc->fatfs.fats_sector_start = fc->device->part_start + bpb->BPB_RsvdSecCnt;
     fc->fatfs.fats_sector_count = bpb->BPB_FATSz16 * bpb->BPB_NumFATs;
     fc->fatfs.root_sector_start = fc->fatfs.fats_sector_start + fc->fatfs.fats_sector_count;
     fc->fatfs.root_sector_count = (32 * bpb->BPB_RootEntCnt + bpb->BPB_BytsPerSec - 1) / bpb->BPB_BytsPerSec;
     fc->fatfs.data_sector_start = fc->fatfs.root_sector_start + fc->fatfs.root_sector_count;
     fc->fatfs.data_sector_count = bpb->BPB_TotSec16 - fc->fatfs.data_sector_start;
 
+    printf("\r\n");
     printf("fats_sector_start %d.\r\n", fc->fatfs.fats_sector_start);
     printf("fats_sector_count %d.\r\n", fc->fatfs.fats_sector_count);
     printf("root_sector_start %d.\r\n", fc->fatfs.root_sector_start);
     printf("root_sector_count %d.\r\n", fc->fatfs.root_sector_count);
     printf("data_sector_start %d.\r\n", fc->fatfs.data_sector_start);
     printf("data_sector_count %d.\r\n", fc->fatfs.data_sector_count);
+    
+    // process fat table
+    size_t fats_addr = (fc->fatfs.fats_sector_start * fc->device->sector_size);
+    fat_fats_check(fc, fats_addr);
+
+    // process fat root directory
+    size_t root_addr = (fc->fatfs.root_sector_start * fc->device->sector_size);
+    fat_data_check(fc, root_addr);
+
+    // process fat data
 }
 
 int fatck(const char* path, int sector_size)

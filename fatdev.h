@@ -1,4 +1,4 @@
-﻿// fatdev.h : fat device operate source file
+// fatdev.h : fat device operate source file
 #ifndef __FATDEV_H__
 #define __FATDEV_H__
 
@@ -10,6 +10,8 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <ctype.h>
+#include <stdbool.h>
 
 typedef struct fat_dev
 {
