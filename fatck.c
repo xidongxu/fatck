@@ -38,6 +38,20 @@
 // FAT12/16/32 common field (offset from 510)
 #define BPB_BOOT_SIG        (510)
 
+// FAT12/16/32 common dir field
+#define DIR_NAME            (0)
+#define DIR_ATTR            (11)
+#define DIR_NTRES           (12)
+#define DIR_CRT_TIME_TENTH  (13)
+#define DIR_CRT_TIME        (14)
+#define DIR_CRT_DATE        (16)
+#define DIR_LST_ACC_DATE    (18)
+#define DIR_FST_CLUS_HI     (20)
+#define DIR_WRT_TIME        (22)
+#define DIR_WRT_DATE        (24)
+#define DIR_FST_CLUS_LO     (26)
+#define DIR_FILE_SIZE       (28)
+
 #ifndef FAT_DPT_ADDRESS
 #define FAT_DPT_ADDRESS     (0x1BE)
 #endif
@@ -136,6 +150,22 @@ typedef struct fat_ck
     uint8_t* fnbuf;
     int error;
 } fat_ck_t;
+
+typedef struct fat_dir
+{
+    uint8_t  DIR_Name[12];
+    uint8_t  DIR_Attr;
+    uint8_t  DIR_NTRes;
+    uint8_t  DIR_CrtTimeTenth;
+    uint16_t DIR_CrtTime;
+    uint16_t DIR_CrtDate;
+    uint16_t DIR_LstAccDate;
+    uint16_t DIR_FstClusHI;
+    uint16_t DIR_WrtTime;
+    uint16_t DIR_WrtDate;
+    uint16_t DIR_FstClusLO;
+    uint32_t DIR_FileSize;
+} fat_dir_t;
 
 #define first_sector_of_cluster(fatfs, cluster) (((cluster)-2) * (fatfs)->bpb.BPB_SecPerClus + (fatfs)->first_data_sector)
 
@@ -386,29 +416,42 @@ static int fat_data_check(fat_ck_t* fc, uint32_t addr)
 {
     int result = -1;
     uint8_t dir_info[32] = { 0x00 };
-    uint8_t dir_name[12] = { 0x00 };
+    fat_dir_t dir = { NULL };
     
     while (true)
     {
         result = fat_dev_read(fc->device, addr, dir_info, sizeof(dir_info));
         if ((result == sizeof(dir_info)) && (dir_info[0] != '\0'))
         {
-            strncpy(dir_name, dir_info, sizeof(dir_name) - 1);
-            printf("\r\n");
-            printf("DIR_Name         : %s \r\n", dir_name);
-            printf("DIR_Attr         : %d \r\n", dir_info[11]);
-            printf("DIR_NTRes        : %d \r\n", dir_info[12]);
-            printf("DIR_CrtTimeTenth : %d \r\n", dir_info[13]);
-            printf("DIR_CrtTime      : %d \r\n", FAT_GET_UINT16(&dir_info[14]));
-            printf("DIR_CrtDate      : %d \r\n", FAT_GET_UINT16(&dir_info[16]));
-            printf("DIR_LstAccDate   : %d \r\n", FAT_GET_UINT16(&dir_info[18]));
-            printf("DIR_FstClusHI    : %d \r\n", FAT_GET_UINT16(&dir_info[20]));
-            printf("DIR_WrtTime      : %d \r\n", FAT_GET_UINT16(&dir_info[22]));
-            printf("DIR_WrtDate      : %d \r\n", FAT_GET_UINT16(&dir_info[24]));
-            printf("DIR_FstClusLO    : %d \r\n", FAT_GET_UINT16(&dir_info[26]));
-            printf("DIR_FileSize     : %d \r\n", FAT_GET_UINT32(&dir_info[28]));
+            memset(&dir, 0, sizeof(fat_dir_t));
+            strncpy(dir.DIR_Name, dir_info, sizeof(dir.DIR_Name) - 1);
+            dir.DIR_Attr         = dir_info[DIR_ATTR];
+            dir.DIR_NTRes        = dir_info[DIR_NTRES];
+            dir.DIR_CrtTimeTenth = dir_info[DIR_CRT_TIME_TENTH];
+            dir.DIR_CrtTime      = FAT_GET_UINT16(&dir_info[DIR_CRT_TIME]);
+            dir.DIR_CrtDate      = FAT_GET_UINT16(&dir_info[DIR_CRT_DATE]);
+            dir.DIR_LstAccDate   = FAT_GET_UINT16(&dir_info[DIR_LST_ACC_DATE]);
+            dir.DIR_FstClusHI    = FAT_GET_UINT16(&dir_info[DIR_FST_CLUS_HI]);
+            dir.DIR_WrtTime      = FAT_GET_UINT16(&dir_info[DIR_WRT_TIME]);
+            dir.DIR_WrtDate      = FAT_GET_UINT16(&dir_info[DIR_WRT_DATE]);
+            dir.DIR_FstClusLO    = FAT_GET_UINT16(&dir_info[DIR_FST_CLUS_LO]);
+            dir.DIR_FileSize     = FAT_GET_UINT32(&dir_info[DIR_FILE_SIZE]);
 
-            uint16_t cluster_value = fat_fats_value(fc, FAT_GET_UINT16(&dir_info[26]));
+            printf("\r\n");
+            printf("DIR_Name         : %s \r\n", dir.DIR_Name);
+            printf("DIR_Attr         : %d \r\n", dir.DIR_Attr);
+            printf("DIR_NTRes        : %d \r\n", dir.DIR_NTRes);
+            printf("DIR_CrtTimeTenth : %d \r\n", dir.DIR_CrtTimeTenth);
+            printf("DIR_CrtTime      : %d \r\n", dir.DIR_CrtTime);
+            printf("DIR_CrtDate      : %d \r\n", dir.DIR_CrtDate);
+            printf("DIR_LstAccDate   : %d \r\n", dir.DIR_LstAccDate);
+            printf("DIR_FstClusHI    : %d \r\n", dir.DIR_FstClusHI);
+            printf("DIR_WrtTime      : %d \r\n", dir.DIR_WrtTime);
+            printf("DIR_WrtDate      : %d \r\n", dir.DIR_WrtDate);
+            printf("DIR_FstClusLO    : %d \r\n", dir.DIR_FstClusLO);
+            printf("DIR_FileSize     : %d \r\n", dir.DIR_FileSize);
+
+            uint16_t cluster_value = fat_fats_value(fc, dir.DIR_FstClusLO);
             addr = addr + sizeof(dir_info);
         }
         else
