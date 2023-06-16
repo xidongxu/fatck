@@ -450,7 +450,12 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
         if ((result == sizeof(dir_info)) && (dir_info[0] != '\0'))
         {
             // this is short file name or other files.
-            if (dir_info[DIR_ATTR] != ATTR_LONG_FILE_NAME)
+            if (dir_info[DIR_ATTR] == ATTR_READ_ONLY || \
+                dir_info[DIR_ATTR] == ATTR_HIDDEN    || \
+                dir_info[DIR_ATTR] == ATTR_SYSTEM    || \
+                dir_info[DIR_ATTR] == ATTR_VOLUME_ID || \
+                dir_info[DIR_ATTR] == ATTR_DIRECTORY || \
+                dir_info[DIR_ATTR] == ATTR_ARCHIVE)
             {
                 memset(&dir, 0, sizeof(fat_dir_t));
                 strncpy(dir.DIR_Name, dir_info, sizeof(dir.DIR_Name) - 1);
