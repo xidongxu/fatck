@@ -439,35 +439,45 @@ static int fat_data_check(fat_ck_t* fc, uint32_t addr)
         result = fat_dev_read(fc->device, addr, dir_info, sizeof(dir_info));
         if ((result == sizeof(dir_info)) && (dir_info[0] != '\0'))
         {
-            memset(&dir, 0, sizeof(fat_dir_t));
-            strncpy(dir.DIR_Name, dir_info, sizeof(dir.DIR_Name) - 1);
-            dir.DIR_Attr         = dir_info[DIR_ATTR];
-            dir.DIR_NTRes        = dir_info[DIR_NTRES];
-            dir.DIR_CrtTimeTenth = dir_info[DIR_CRT_TIME_TENTH];
-            dir.DIR_CrtTime      = FAT_GET_UINT16(&dir_info[DIR_CRT_TIME]);
-            dir.DIR_CrtDate      = FAT_GET_UINT16(&dir_info[DIR_CRT_DATE]);
-            dir.DIR_LstAccDate   = FAT_GET_UINT16(&dir_info[DIR_LST_ACC_DATE]);
-            dir.DIR_FstClusHI    = FAT_GET_UINT16(&dir_info[DIR_FST_CLUS_HI]);
-            dir.DIR_WrtTime      = FAT_GET_UINT16(&dir_info[DIR_WRT_TIME]);
-            dir.DIR_WrtDate      = FAT_GET_UINT16(&dir_info[DIR_WRT_DATE]);
-            dir.DIR_FstClusLO    = FAT_GET_UINT16(&dir_info[DIR_FST_CLUS_LO]);
-            dir.DIR_FileSize     = FAT_GET_UINT32(&dir_info[DIR_FILE_SIZE]);
+            // this is short file name or other files.
+            if (dir_info[DIR_ATTR] != ATTR_LONG_FILE_NAME)
+            {
+                memset(&dir, 0, sizeof(fat_dir_t));
+                strncpy(dir.DIR_Name, dir_info, sizeof(dir.DIR_Name) - 1);
+                dir.DIR_Attr = dir_info[DIR_ATTR];
+                dir.DIR_NTRes = dir_info[DIR_NTRES];
+                dir.DIR_CrtTimeTenth = dir_info[DIR_CRT_TIME_TENTH];
+                dir.DIR_CrtTime = FAT_GET_UINT16(&dir_info[DIR_CRT_TIME]);
+                dir.DIR_CrtDate = FAT_GET_UINT16(&dir_info[DIR_CRT_DATE]);
+                dir.DIR_LstAccDate = FAT_GET_UINT16(&dir_info[DIR_LST_ACC_DATE]);
+                dir.DIR_FstClusHI = FAT_GET_UINT16(&dir_info[DIR_FST_CLUS_HI]);
+                dir.DIR_WrtTime = FAT_GET_UINT16(&dir_info[DIR_WRT_TIME]);
+                dir.DIR_WrtDate = FAT_GET_UINT16(&dir_info[DIR_WRT_DATE]);
+                dir.DIR_FstClusLO = FAT_GET_UINT16(&dir_info[DIR_FST_CLUS_LO]);
+                dir.DIR_FileSize = FAT_GET_UINT32(&dir_info[DIR_FILE_SIZE]);
 
-            printf("\r\n");
-            printf("DIR_Name         : %s \r\n", dir.DIR_Name);
-            printf("DIR_Attr         : 0x%02X \r\n", dir.DIR_Attr);
-            printf("DIR_NTRes        : 0x%02X \r\n", dir.DIR_NTRes);
-            printf("DIR_CrtTimeTenth : %d \r\n", dir.DIR_CrtTimeTenth);
-            printf("DIR_CrtTime      : %d \r\n", dir.DIR_CrtTime);
-            printf("DIR_CrtDate      : %d \r\n", dir.DIR_CrtDate);
-            printf("DIR_LstAccDate   : %d \r\n", dir.DIR_LstAccDate);
-            printf("DIR_FstClusHI    : %d \r\n", dir.DIR_FstClusHI);
-            printf("DIR_WrtTime      : %d \r\n", dir.DIR_WrtTime);
-            printf("DIR_WrtDate      : %d \r\n", dir.DIR_WrtDate);
-            printf("DIR_FstClusLO    : %d \r\n", dir.DIR_FstClusLO);
-            printf("DIR_FileSize     : %d \r\n", dir.DIR_FileSize);
+                printf("DIR_Name         : %s \r\n", dir.DIR_Name);
+                printf("DIR_Attr         : 0x%02X \r\n", dir.DIR_Attr);
+                printf("DIR_NTRes        : 0x%02X \r\n", dir.DIR_NTRes);
+                printf("DIR_CrtTimeTenth : %d \r\n", dir.DIR_CrtTimeTenth);
+                printf("DIR_CrtTime      : %d \r\n", dir.DIR_CrtTime);
+                printf("DIR_CrtDate      : %d \r\n", dir.DIR_CrtDate);
+                printf("DIR_LstAccDate   : %d \r\n", dir.DIR_LstAccDate);
+                printf("DIR_FstClusHI    : %d \r\n", dir.DIR_FstClusHI);
+                printf("DIR_WrtTime      : %d \r\n", dir.DIR_WrtTime);
+                printf("DIR_WrtDate      : %d \r\n", dir.DIR_WrtDate);
+                printf("DIR_FstClusLO    : %d \r\n", dir.DIR_FstClusLO);
+                printf("DIR_FileSize     : %d \r\n", dir.DIR_FileSize);
+                printf("\r\n");
 
-            uint16_t cluster_value = fat_fats_value(fc, dir.DIR_FstClusLO);
+                uint16_t cluster_value = fat_fats_value(fc, dir.DIR_FstClusLO);
+            }
+            // this is long file name.
+            else if (dir_info[DIR_ATTR] == ATTR_LONG_FILE_NAME)
+            {
+                printf("LFN file.\r\n");
+            }
+            // read next info.
             addr = addr + sizeof(dir_info);
         }
         else
