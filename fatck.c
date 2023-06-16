@@ -74,6 +74,9 @@
 #ifndef FAT16_INFO_SIZE
 #define FAT16_INFO_SIZE     (2)
 #endif
+#ifndef FAT_LFN_SIZE
+#define FAT_LFN_SIZE        (0xFF)
+#endif
 
 #define FAT_TYPE_FAT12      (12)
 #define FAT_TYPE_FAT16      (16)
@@ -433,11 +436,62 @@ static int fat_fats_value(fat_ck_t* fc, uint32_t cluster)
     return -1;
 }
 
+static int fat_lfn_read(fat_ck_t* fc, uint32_t start, uint32_t count, uint8_t *name, uint8_t size)
+{
+    int result = -1;
+    uint8_t dir_info[FAT_DIR_ENTRY_SIZE] = { 0x00 };
+    uint32_t sfn_addr = start;
+    int index = 0, i = 0, j = 0;
+    // read long name info.
+    for (index = 1; index < count + 1; index++)
+    {
+        result = fat_dev_read(fc->device, (sfn_addr - (sizeof(dir_info) * index)), dir_info, sizeof(dir_info));
+        if ((result == sizeof(dir_info)) && (dir_info[0] != '\0'))
+        {
+            for (i = 0x01; (i < 0x0B) && (j < size); i = i + 2, j = j + 1)
+            {
+                if (dir_info[i] != 0xFF)
+                {
+                    name[j] = dir_info[i];
+                }
+            }
+
+            for (i = 0x0E; (i < 0x1A) && (j < size); i = i + 2, j = j + 1)
+            {
+                if (dir_info[i] != 0xFF)
+                {
+                    name[j] = dir_info[i];
+                }
+            }
+
+            for (i = 0x1C; (i < 0x20) && (j < size); i = i + 2, j = j + 1)
+            {
+                if (dir_info[i] != 0xFF)
+                {
+                    name[j] = dir_info[i];
+                }
+            }
+        }
+    }
+    // set name end.
+    if (j + 1 < size)
+    {
+        name[j + 1] = '\0';
+    }
+    else
+    {
+        name[size - 1] = '\0';
+    }
+    return 0;
+}
+
 static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
 {
     int result = -1;
     uint8_t dir_info[FAT_DIR_ENTRY_SIZE] = { 0x00 };
     fat_dir_t dir = { 0 };
+    uint8_t lfn_cnt = 0;
+    uint8_t lfn_buf[FAT_LFN_SIZE] = { 0x00 };
     
     while (true)
     {
@@ -457,7 +511,7 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
                 dir_info[DIR_ATTR] == ATTR_DIRECTORY || \
                 dir_info[DIR_ATTR] == ATTR_ARCHIVE)
             {
-                printf("\r\nShort file name info.\r\n");
+                printf("\r\n========== Dir info ==========\r\n");
                 memset(&dir, 0, sizeof(fat_dir_t));
                 strncpy(dir.DIR_Name, dir_info, sizeof(dir.DIR_Name) - 1);
                 dir.DIR_Attr = dir_info[DIR_ATTR];
@@ -471,8 +525,22 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
                 dir.DIR_WrtDate = FAT_GET_UINT16(&dir_info[DIR_WRT_DATE]);
                 dir.DIR_FstClusLO = FAT_GET_UINT16(&dir_info[DIR_FST_CLUS_LO]);
                 dir.DIR_FileSize = FAT_GET_UINT32(&dir_info[DIR_FILE_SIZE]);
-
-                printf("DIR_Name         : %s \r\n", dir.DIR_Name);
+                if (lfn_cnt > 0)
+                {
+                    // long file name
+                    fat_lfn_read(fc, start, lfn_cnt, &lfn_buf, FAT_LFN_SIZE);
+                    printf("DIR_Name         : %s \r\n",lfn_buf);
+                    lfn_cnt = 0;
+                }
+                else
+                {
+                    // short file name and is lowcase char.
+                    if (dir.DIR_NTRes == SFN_BODY_LOW_CASE)
+                    {
+                        fat_name_tolower(dir.DIR_Name, sizeof(dir.DIR_Name));
+                    }
+                    printf("DIR_Name         : %s \r\n", dir.DIR_Name);
+                }
                 printf("DIR_Attr         : 0x%02X \r\n", dir.DIR_Attr);
                 printf("DIR_NTRes        : 0x%02X \r\n", dir.DIR_NTRes);
                 printf("DIR_CrtTimeTenth : %d \r\n", dir.DIR_CrtTimeTenth);
@@ -490,7 +558,8 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
             // this is long file name.
             else if (dir_info[DIR_ATTR] == ATTR_LONG_FILE_NAME)
             {
-                printf("Long file name info.\r\n");
+                //printf("Long file name info.\r\n");
+                lfn_cnt = lfn_cnt + 1;
             }
             else
             {
@@ -539,6 +608,9 @@ static int fat_root_check(fat_ck_t* fc)
     fat_dirs_check(fc, root_start, root_end);
 
     // process fat data
+    uint32_t root_sub_start = ((fc->fatfs.root_sector_start + 4) * fc->device->sector_size);
+    uint32_t root_sub_end = (fc->fatfs.root_sector_start + 5) * fc->device->sector_size;
+    fat_dirs_check(fc, root_sub_start, root_sub_end);
 
     return 0;
 }
