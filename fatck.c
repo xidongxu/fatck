@@ -422,18 +422,52 @@ static int fat_fats_check(fat_ck_t* fc, uint32_t start, uint32_t end)
     return result;
 }
 
-static int fat_fats_value(fat_ck_t* fc, uint32_t cluster)
+static int fat_fats_count(fat_ck_t* fc, uint32_t index)
 {
     int result = -1;
-    uint8_t  fat_info[2] = { 0x00 };
-    uint32_t fat_addr = (fc->fatfs.fats_sector_start * fc->device->sector_size) + (cluster * sizeof(fat_info));
-    result = fat_dev_read(fc->device, fat_addr, fat_info, sizeof(fat_info));
-    if (result == sizeof(fat_info))
+    uint8_t  fat_info[FAT16_INFO_SIZE] = { 0x00 };
+    uint32_t fat_addr = (fc->fatfs.fats_sector_start * fc->device->sector_size) + (index * sizeof(fat_info));
+    uint16_t value = 0;
+    uint16_t count = 0;
+
+    while (true)
     {
-        printf("addr 0x%08X cluster value: 0x%04X.\r\n", fat_addr, FAT_GET_UINT16(&fat_info[0]));
-        return FAT_GET_UINT16(&fat_info[0]);
+        result = fat_dev_read(fc->device, fat_addr, fat_info, sizeof(fat_info));
+        if (result == sizeof(fat_info))
+        {
+            value = FAT_GET_UINT16(&fat_info[0]);
+            if (value == 0x0000)
+            {
+                count = 0;
+                break;
+            }
+            else if (value == 0x0001)
+            {
+                count = 0;
+                break;
+            }
+            else if ((value > 0x0002) && (value <= 0xFFF6))
+            {
+                count = count + 1;
+            }
+            else if (value == 0xFFF7)
+            {
+                fat_addr = fat_addr + sizeof(fat_info);
+                continue;
+            }
+            else if ((value >= 0xFFF8) && (value <= 0xFFFF))
+            {
+                count = count + 1;
+                break;
+            }
+            fat_addr = fat_addr + sizeof(fat_info);
+        }
+        else
+        {
+            return count;
+        }
     }
-    return -1;
+    return count;
 }
 
 static int fat_lfn_read(fat_ck_t* fc, uint32_t start, uint32_t count, uint8_t *name, uint8_t size)
@@ -503,6 +537,12 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
         result = fat_dev_read(fc->device, start, dir_info, sizeof(dir_info));
         if ((result == sizeof(dir_info)) && (dir_info[0] != '\0'))
         {
+            if (((dir_info[0] == 0x2E) && (dir_info[1] == 0x20)) || \
+                ((dir_info[0] == 0x2E) && (dir_info[1] == 0x2E) && (dir_info[2] == 0x20)))
+            {
+                start = start + sizeof(dir_info);
+                continue;
+            }
             // this is short file name or other files.
             if (dir_info[DIR_ATTR] == ATTR_READ_ONLY || \
                 dir_info[DIR_ATTR] == ATTR_HIDDEN    || \
@@ -553,7 +593,13 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
                 printf("DIR_FstClusLO    : %d \r\n", dir.DIR_FstClusLO);
                 printf("DIR_FileSize     : %d \r\n", dir.DIR_FileSize);
 
-                uint16_t cluster_value = fat_fats_value(fc, dir.DIR_FstClusLO);
+                if ((dir.DIR_FstClusLO > 0) && (dir.DIR_FileSize == 0))
+                {
+                    uint16_t count = fat_fats_count(fc, dir.DIR_FstClusLO);
+                    uint32_t addrs = (fc->fatfs.root_sector_start + 2 + dir.DIR_FstClusLO) * fc->device->sector_size;
+                    uint32_t stops = addrs + count * fc->device->sector_size;
+                    fat_dirs_check(fc, addrs, stops);
+                }
             }
             // this is long file name.
             else if (dir_info[DIR_ATTR] == ATTR_LONG_FILE_NAME)
@@ -564,6 +610,7 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
             else
             {
                 printf("Unknown file name info.\r\n");
+                break;
             }
             // read next info.
             start = start + sizeof(dir_info);
