@@ -456,7 +456,7 @@ static int fat_data_check(fat_ck_t* fc, uint32_t addr)
             printf("\r\n");
             printf("DIR_Name         : %s \r\n", dir.DIR_Name);
             printf("DIR_Attr         : 0x%02X \r\n", dir.DIR_Attr);
-            printf("DIR_NTRes        : 0x%02x \r\n", dir.DIR_NTRes);
+            printf("DIR_NTRes        : 0x%02X \r\n", dir.DIR_NTRes);
             printf("DIR_CrtTimeTenth : %d \r\n", dir.DIR_CrtTimeTenth);
             printf("DIR_CrtTime      : %d \r\n", dir.DIR_CrtTime);
             printf("DIR_CrtDate      : %d \r\n", dir.DIR_CrtDate);
