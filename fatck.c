@@ -457,6 +457,7 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
                 dir_info[DIR_ATTR] == ATTR_DIRECTORY || \
                 dir_info[DIR_ATTR] == ATTR_ARCHIVE)
             {
+                printf("\r\nShort file name info.\r\n");
                 memset(&dir, 0, sizeof(fat_dir_t));
                 strncpy(dir.DIR_Name, dir_info, sizeof(dir.DIR_Name) - 1);
                 dir.DIR_Attr = dir_info[DIR_ATTR];
@@ -483,14 +484,17 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
                 printf("DIR_WrtDate      : %d \r\n", dir.DIR_WrtDate);
                 printf("DIR_FstClusLO    : %d \r\n", dir.DIR_FstClusLO);
                 printf("DIR_FileSize     : %d \r\n", dir.DIR_FileSize);
-                printf("\r\n");
 
                 uint16_t cluster_value = fat_fats_value(fc, dir.DIR_FstClusLO);
             }
             // this is long file name.
             else if (dir_info[DIR_ATTR] == ATTR_LONG_FILE_NAME)
             {
-                printf("LFN file.\r\n");
+                printf("Long file name info.\r\n");
+            }
+            else
+            {
+                printf("Unknown file name info.\r\n");
             }
             // read next info.
             start = start + sizeof(dir_info);
