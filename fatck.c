@@ -52,11 +52,27 @@
 #define DIR_FST_CLUS_LO     (26)
 #define DIR_FILE_SIZE       (28)
 
+// file attribute
+#define ATTR_READ_ONLY      (0x01)
+#define ATTR_HIDDEN         (0x02)
+#define ATTR_SYSTEM         (0x04)
+#define ATTR_VOLUME_ID      (0x08)
+#define ATTR_DIRECTORY      (0x10)
+#define ATTR_ARCHIVE        (0x20)
+#define ATTR_LONG_FILE_NAME (0x0F)
+
+// Optional flags that indicates case information of the SFN.
+#define SFN_BODY_LOW_CASE   (0x08)
+#define SFN_EXTE_LOW_CASE   (0x10)
+
 #ifndef FAT_DPT_ADDRESS
 #define FAT_DPT_ADDRESS     (0x1BE)
 #endif
 #ifndef FAT_DIR_ENTRY_SIZE
 #define FAT_DIR_ENTRY_SIZE  (32)
+#endif
+#ifndef FAT16_INFO_SIZE
+#define FAT16_INFO_SIZE     (2)
 #endif
 
 #define FAT_TYPE_FAT12      (12)
@@ -171,7 +187,7 @@ typedef struct fat_dir
 
 static int fat_name_tolower(char* name, size_t size)
 {
-    int index = 0;
+    size_t index = 0;
     for (index = 0; index < size; index++)
     {
         if (name[index] >= 'A' && name[index] <= 'Z')
@@ -297,7 +313,7 @@ static int fat_root_read(fat_ck_t* fc)
     if (bpb->BS_BootSig == 0x29) 
     {
         bpb->BS_VolID = FAT_GET_UINT32(&sec_bpb[BS_32_VOLID]);
-        strncpy(bpb->BS_VolID, (char*)&sec_bpb[BS_32_VOLLAB], 11);
+        strncpy(bpb->BS_VolLab, (char*)&sec_bpb[BS_32_VOLLAB], 11);
         strncpy(bpb->BS_FilSysType, (char*)&sec_bpb[BS_32_FILSYSTYPE], 8);
     }
 
@@ -349,7 +365,7 @@ static int fat_root_read(fat_ck_t* fc)
 static int fat_fats_check(fat_ck_t* fc, uint32_t addr)
 {
     int result = -1;
-    uint8_t  fat_info[2] = { 0x00 };
+    uint8_t  fat_info[FAT16_INFO_SIZE] = { 0x00 };
     uint16_t value = 0;
     uint16_t count = 0;
     uint32_t index_addr = addr + (2 * sizeof(fat_info));
@@ -415,8 +431,8 @@ static int fat_fats_value(fat_ck_t* fc, uint32_t cluster)
 static int fat_data_check(fat_ck_t* fc, uint32_t addr)
 {
     int result = -1;
-    uint8_t dir_info[32] = { 0x00 };
-    fat_dir_t dir = { NULL };
+    uint8_t dir_info[FAT_DIR_ENTRY_SIZE] = { 0x00 };
+    fat_dir_t dir = { 0 };
     
     while (true)
     {
@@ -439,8 +455,8 @@ static int fat_data_check(fat_ck_t* fc, uint32_t addr)
 
             printf("\r\n");
             printf("DIR_Name         : %s \r\n", dir.DIR_Name);
-            printf("DIR_Attr         : %d \r\n", dir.DIR_Attr);
-            printf("DIR_NTRes        : %d \r\n", dir.DIR_NTRes);
+            printf("DIR_Attr         : 0x%02X \r\n", dir.DIR_Attr);
+            printf("DIR_NTRes        : 0x%02x \r\n", dir.DIR_NTRes);
             printf("DIR_CrtTimeTenth : %d \r\n", dir.DIR_CrtTimeTenth);
             printf("DIR_CrtTime      : %d \r\n", dir.DIR_CrtTime);
             printf("DIR_CrtDate      : %d \r\n", dir.DIR_CrtDate);
@@ -492,6 +508,8 @@ static int fat_root_check(fat_ck_t* fc)
     fat_data_check(fc, root_addr);
 
     // process fat data
+
+    return 0;
 }
 
 int fatck(const char* path, int sector_size)
