@@ -362,17 +362,22 @@ static int fat_root_read(fat_ck_t* fc)
     return 0;
 }
 
-static int fat_fats_check(fat_ck_t* fc, uint32_t addr)
+static int fat_fats_check(fat_ck_t* fc, uint32_t start, uint32_t end)
 {
     int result = -1;
     uint8_t  fat_info[FAT16_INFO_SIZE] = { 0x00 };
     uint16_t value = 0;
     uint16_t count = 0;
-    uint32_t index_addr = addr + (2 * sizeof(fat_info));
+    uint32_t index_addr = start + (2 * sizeof(fat_info));
     uint32_t start_addr = 0;
     
     while (true)
     {
+        // read finished, break loop.
+        if (index_addr >= end)
+        {
+            break;
+        }
         result = fat_dev_read(fc->device, index_addr, fat_info, sizeof(fat_info));
         if (result == sizeof(fat_info))
         {
@@ -428,7 +433,7 @@ static int fat_fats_value(fat_ck_t* fc, uint32_t cluster)
     return -1;
 }
 
-static int fat_data_check(fat_ck_t* fc, uint32_t addr)
+static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
 {
     int result = -1;
     uint8_t dir_info[FAT_DIR_ENTRY_SIZE] = { 0x00 };
@@ -436,7 +441,12 @@ static int fat_data_check(fat_ck_t* fc, uint32_t addr)
     
     while (true)
     {
-        result = fat_dev_read(fc->device, addr, dir_info, sizeof(dir_info));
+        // read finished, break loop.
+        if (start >= end)
+        {
+            break;
+        }
+        result = fat_dev_read(fc->device, start, dir_info, sizeof(dir_info));
         if ((result == sizeof(dir_info)) && (dir_info[0] != '\0'))
         {
             // this is short file name or other files.
@@ -478,7 +488,7 @@ static int fat_data_check(fat_ck_t* fc, uint32_t addr)
                 printf("LFN file.\r\n");
             }
             // read next info.
-            addr = addr + sizeof(dir_info);
+            start = start + sizeof(dir_info);
         }
         else
         {
@@ -510,12 +520,14 @@ static int fat_root_check(fat_ck_t* fc)
     printf("data_sector_count %d.\r\n", fc->fatfs.data_sector_count);
     
     // process fat table
-    uint32_t fats_addr = (fc->fatfs.fats_sector_start * fc->device->sector_size);
-    fat_fats_check(fc, fats_addr);
+    uint32_t fats_start = (fc->fatfs.fats_sector_start * fc->device->sector_size);
+    uint32_t fats_end = (fc->fatfs.fats_sector_start + fc->fatfs.fats_sector_count) * fc->device->sector_size;
+    fat_fats_check(fc, fats_start, fats_end);
 
     // process fat root directory
-    uint32_t root_addr = (fc->fatfs.root_sector_start * fc->device->sector_size);
-    fat_data_check(fc, root_addr);
+    uint32_t root_start = (fc->fatfs.root_sector_start * fc->device->sector_size);
+    uint32_t root_end = (fc->fatfs.root_sector_start + fc->fatfs.root_sector_count) * fc->device->sector_size;
+    fat_dirs_check(fc, root_start, root_end);
 
     // process fat data
 
