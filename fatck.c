@@ -64,6 +64,7 @@
 // Optional flags that indicates case information of the SFN.
 #define SFN_BODY_LOW_CASE   (0x08)
 #define SFN_EXTE_LOW_CASE   (0x10)
+#define SFN_ALLS_LOW_CASE   (0x18)
 
 #ifndef FAT_DPT_ADDRESS
 #define FAT_DPT_ADDRESS     (0x1BE)
@@ -172,7 +173,7 @@ typedef struct fat_ck
 
 typedef struct fat_dir
 {
-    uint8_t  DIR_Name[12];
+    uint8_t  DIR_Name[13];
     uint8_t  DIR_Attr;
     uint8_t  DIR_NTRes;
     uint8_t  DIR_CrtTimeTenth;
@@ -187,18 +188,6 @@ typedef struct fat_dir
 } fat_dir_t;
 
 #define first_sector_of_cluster(fatfs, cluster) (((cluster)-2) * (fatfs)->bpb.BPB_SecPerClus + (fatfs)->first_data_sector)
-
-static int fat_name_tolower(char* name, size_t size)
-{
-    size_t index = 0;
-    for (index = 0; index < size; index++)
-    {
-        if (name[index] >= 'A' && name[index] <= 'Z')
-        {
-            name[index] = tolower(name[index]);
-        }
-    }
-}
 
 static int fat_root_read(fat_ck_t* fc)
 {
@@ -519,6 +508,60 @@ static int fat_lfn_read(fat_ck_t* fc, uint32_t start, uint32_t count, uint8_t *n
     return 0;
 }
 
+static int fat_sfn_read(char name[13], uint8_t attr)
+{
+    size_t index = 0;
+    size_t useds = 0;
+    size_t start = 0;
+    size_t limit = 0;
+    char temp[13] = { 0 };
+
+    switch (attr)
+    {
+    case SFN_BODY_LOW_CASE:
+        start = 0x00; limit = 0x08;
+        break;
+    case SFN_EXTE_LOW_CASE:
+        start = 0x08; limit = 0x0B;
+        break;
+    case SFN_ALLS_LOW_CASE:
+        start = 0x00; limit = 0x0B;
+        break;
+    default:
+        start = 0x00; limit = 0x00;
+        break;
+    }
+    memset(temp, 0, sizeof(temp));
+    // uper char transfer to lower char.
+    for (index = 0; (index < 11) && (useds < 13); index++)
+    {
+        if ((index >= start) && (index < limit) && (name[index] >= 'A') && (name[index] <= 'Z'))
+        {
+            name[index] = tolower(name[index]);
+        }
+        if ((name[index] >= 'A') && (name[index] <= 'z'))
+        {
+            temp[useds] = name[index];
+            useds = useds + 1;
+        }
+        if ((index == 0x07) && (name[index] == ' '))
+        {
+            temp[useds] = '.';
+            useds = useds + 1;
+        }
+    }
+    if (useds < 13)
+    {
+        temp[useds] = '\0';
+    }
+    else
+    {
+        temp[12] = '\0';
+    }
+    memcpy(name, temp, sizeof(temp));
+    return 0;
+}
+
 static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
 {
     int result = -1;
@@ -553,7 +596,7 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
             {
                 printf("\r\n========== Dir info ==========\r\n");
                 memset(&dir, 0, sizeof(fat_dir_t));
-                strncpy(dir.DIR_Name, dir_info, sizeof(dir.DIR_Name) - 1);
+                strncpy(dir.DIR_Name, dir_info, sizeof(dir.DIR_Name) - 2);
                 dir.DIR_Attr = dir_info[DIR_ATTR];
                 dir.DIR_NTRes = dir_info[DIR_NTRES];
                 dir.DIR_CrtTimeTenth = dir_info[DIR_CRT_TIME_TENTH];
@@ -565,22 +608,20 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
                 dir.DIR_WrtDate = FAT_GET_UINT16(&dir_info[DIR_WRT_DATE]);
                 dir.DIR_FstClusLO = FAT_GET_UINT16(&dir_info[DIR_FST_CLUS_LO]);
                 dir.DIR_FileSize = FAT_GET_UINT32(&dir_info[DIR_FILE_SIZE]);
+                // long file name
                 if (lfn_cnt > 0)
                 {
-                    // long file name
                     fat_lfn_read(fc, start, lfn_cnt, &lfn_buf, FAT_LFN_SIZE);
-                    printf("DIR_Name         : %s \r\n",lfn_buf);
+                    printf("DIR_Name         : %s \r\n", lfn_buf);
                     lfn_cnt = 0;
                 }
+                // short file name.
                 else
                 {
-                    // short file name and is lowcase char.
-                    if (dir.DIR_NTRes == SFN_BODY_LOW_CASE)
-                    {
-                        fat_name_tolower(dir.DIR_Name, sizeof(dir.DIR_Name));
-                    }
+                    fat_sfn_read(dir.DIR_Name, dir.DIR_NTRes);
                     printf("DIR_Name         : %s \r\n", dir.DIR_Name);
                 }
+                // other file attr.
                 printf("DIR_Attr         : 0x%02X \r\n", dir.DIR_Attr);
                 printf("DIR_NTRes        : 0x%02X \r\n", dir.DIR_NTRes);
                 printf("DIR_CrtTimeTenth : %d \r\n", dir.DIR_CrtTimeTenth);
