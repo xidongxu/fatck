@@ -539,7 +539,7 @@ static int fat_sfn_read(char name[13], uint8_t attr)
         {
             name[index] = tolower(name[index]);
         }
-        if ((name[index] >= 'A') && (name[index] <= 'z'))
+        if (name[index] > ' ')
         {
             temp[useds] = name[index];
             useds = useds + 1;
@@ -697,9 +697,6 @@ static int fat_root_check(fat_ck_t* fc)
     fat_dirs_check(fc, root_start, root_end);
 
     // process fat data
-    uint32_t root_sub_start = ((fc->fatfs.root_sector_start + 4) * fc->device->sector_size);
-    uint32_t root_sub_end = (fc->fatfs.root_sector_start + 5) * fc->device->sector_size;
-    fat_dirs_check(fc, root_sub_start, root_sub_end);
 
     return 0;
 }
