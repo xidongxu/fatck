@@ -75,8 +75,11 @@
 #ifndef FAT16_INFO_SIZE
 #define FAT16_INFO_SIZE     (2)
 #endif
+#ifndef FAT_SFN_SIZE
+#define FAT_SFN_SIZE        (13)
+#endif
 #ifndef FAT_LFN_SIZE
-#define FAT_LFN_SIZE        (0xFF)
+#define FAT_LFN_SIZE        (256)
 #endif
 
 #define FAT_TYPE_FAT12      (12)
@@ -173,7 +176,7 @@ typedef struct fat_ck
 
 typedef struct fat_dir
 {
-    uint8_t  DIR_Name[13];
+    uint8_t  DIR_Name[FAT_SFN_SIZE];
     uint8_t  DIR_Attr;
     uint8_t  DIR_NTRes;
     uint8_t  DIR_CrtTimeTenth;
@@ -508,13 +511,14 @@ static int fat_lfn_read(fat_ck_t* fc, uint32_t start, uint32_t count, uint8_t *n
     return 0;
 }
 
-static int fat_sfn_read(char name[13], uint8_t attr)
+static int fat_sfn_read(char name[FAT_SFN_SIZE], uint8_t attr)
 {
     size_t index = 0;
     size_t useds = 0;
     size_t start = 0;
     size_t limit = 0;
-    char temp[13] = { 0 };
+    size_t point = 0;
+    char temp[FAT_SFN_SIZE] = { 0 };
 
     switch (attr)
     {
@@ -531,9 +535,9 @@ static int fat_sfn_read(char name[13], uint8_t attr)
         start = 0x00; limit = 0x00;
         break;
     }
-    memset(temp, 0, sizeof(temp));
+    memset(temp, 0, FAT_SFN_SIZE);
     // uper char transfer to lower char.
-    for (index = 0; (index < 11) && (useds < 13); index++)
+    for (index = 0; ((index < FAT_SFN_SIZE) && (useds < FAT_SFN_SIZE)); index++)
     {
         if ((index >= start) && (index < limit) && (name[index] >= 'A') && (name[index] <= 'Z'))
         {
@@ -544,21 +548,29 @@ static int fat_sfn_read(char name[13], uint8_t attr)
             temp[useds] = name[index];
             useds = useds + 1;
         }
-        if ((index == 0x07) && (name[index] == ' '))
+        if (index == 0x07)
         {
+            point = useds;
             temp[useds] = '.';
             useds = useds + 1;
         }
     }
-    if (useds < 13)
+    if (useds < FAT_SFN_SIZE)
     {
-        temp[useds] = '\0';
+        if ((point > 0) && (point == (useds - 1)))
+        {
+            temp[point] = '\0';
+        }
+        else
+        {
+            temp[useds] = '\0';
+        }
     }
     else
     {
-        temp[12] = '\0';
+        temp[FAT_SFN_SIZE - 1] = '\0';
     }
-    memcpy(name, temp, sizeof(temp));
+    memcpy(name, temp, FAT_SFN_SIZE);
     return 0;
 }
 
@@ -597,7 +609,7 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
             {
                 printf("\r\n========== Dir info ==========\r\n");
                 memset(&dir, 0, sizeof(fat_dir_t));
-                strncpy(dir.DIR_Name, dir_info, sizeof(dir.DIR_Name) - 2);
+                strncpy(dir.DIR_Name, dir_info, FAT_SFN_SIZE - 2);
                 dir.DIR_Attr = dir_info[DIR_ATTR];
                 dir.DIR_NTRes = dir_info[DIR_NTRES];
                 dir.DIR_CrtTimeTenth = dir_info[DIR_CRT_TIME_TENTH];
