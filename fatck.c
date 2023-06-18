@@ -607,7 +607,6 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
                 dir_info[DIR_ATTR] == ATTR_DIRECTORY || \
                 dir_info[DIR_ATTR] == ATTR_ARCHIVE)
             {
-                printf("\r\n========== Dir info ==========\r\n");
                 memset(&dir, 0, sizeof(fat_dir_t));
                 strncpy(dir.DIR_Name, dir_info, FAT_SFN_SIZE - 2);
                 dir.DIR_Attr = dir_info[DIR_ATTR];
@@ -625,14 +624,14 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
                 if (lfn_cnt > 0)
                 {
                     fat_lfn_read(fc, start, lfn_cnt, &lfn_buf, FAT_LFN_SIZE);
-                    printf("DIR_Name         : %s \r\n", lfn_buf);
+                    printf("\r\nDIR_Name         : %s \r\n", lfn_buf);
                     lfn_cnt = 0;
                 }
                 // short file name.
                 else
                 {
                     fat_sfn_read(dir.DIR_Name, dir.DIR_NTRes);
-                    printf("DIR_Name         : %s \r\n", dir.DIR_Name);
+                    printf("\r\nDIR_Name         : %s \r\n", dir.DIR_Name);
                 }
                 // other file attr.
                 printf("DIR_Attr         : 0x%02X \r\n", dir.DIR_Attr);
