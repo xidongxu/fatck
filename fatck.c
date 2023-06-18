@@ -580,6 +580,7 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
         result = fat_dev_read(fc->device, start, dir_info, sizeof(dir_info));
         if ((result == sizeof(dir_info)) && (dir_info[0] != '\0'))
         {
+            // this is "." or ".." dir
             if (((dir_info[0] == 0x2E) && (dir_info[1] == 0x20)) || \
                 ((dir_info[0] == 0x2E) && (dir_info[1] == 0x2E) && (dir_info[2] == 0x20)))
             {
@@ -633,7 +634,7 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
                 printf("DIR_WrtDate      : %d \r\n", dir.DIR_WrtDate);
                 printf("DIR_FstClusLO    : %d \r\n", dir.DIR_FstClusLO);
                 printf("DIR_FileSize     : %d \r\n", dir.DIR_FileSize);
-
+                // this is subdirectory.
                 if ((dir.DIR_FstClusLO > 0) && (dir.DIR_FileSize == 0))
                 {
                     uint16_t count = fat_fats_count(fc, dir.DIR_FstClusLO);
