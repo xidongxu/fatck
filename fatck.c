@@ -651,7 +651,7 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
             }
             else
             {
-                printf("Unknown file name info.\r\n");
+                //printf("Unknown file name info.\r\n");
                 break;
             }
             // read next info.
