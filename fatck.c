@@ -462,7 +462,7 @@ static int fat_fats_count(fat_ck_t* fc, uint32_t index)
     return count;
 }
 
-static int fat_lfn_read(fat_ck_t* fc, uint32_t start, uint32_t count, uint8_t *name, uint8_t size)
+static int fat_lfn_read(fat_ck_t* fc, uint32_t start, uint32_t count, uint8_t *name, size_t size)
 {
     int result = -1;
     uint8_t dir_info[FAT_DIR_ENTRY_SIZE] = { 0x00 };
