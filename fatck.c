@@ -68,7 +68,10 @@
 
 #define FAT_DPT_ADDRESS     (0x1BE)
 #define FAT_DIR_ENTRY_SIZE  (0x20)
+
+#define FAT12_INFO_SIZE     (0x02)
 #define FAT16_INFO_SIZE     (0x02)
+#define FAT32_INFO_SIZE     (0x04)
 
 // short file name buffer length (include '.' and '\0')
 #define FAT_SFN_SIZE        (0x0D)
@@ -713,14 +716,19 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
 static int fat_root_check(fat_ck_t* fc)
 {
     int result = -1;
-
+    uint32_t BPB_FATSzxxx = 0;
+    uint32_t BPB_TotSecxx = 0;
     fat_bpb_t* bpb = &fc->fatfs.bpb;
+
+    BPB_FATSzxxx = (fc->fatfs.fat_type == FAT_TYPE_FAT32) ? bpb->BPB_FATSz32 : bpb->BPB_FATSz16;
+    BPB_TotSecxx = (fc->fatfs.fat_type == FAT_TYPE_FAT32) ? bpb->BPB_TotSec32 : bpb->BPB_TotSec16;
+
     fc->fatfs.fats_sector_start = fc->device->part_start + bpb->BPB_RsvdSecCnt;
-    fc->fatfs.fats_sector_count = bpb->BPB_FATSz16 * bpb->BPB_NumFATs;
+    fc->fatfs.fats_sector_count = BPB_FATSzxxx * bpb->BPB_NumFATs;
     fc->fatfs.root_sector_start = fc->fatfs.fats_sector_start + fc->fatfs.fats_sector_count;
     fc->fatfs.root_sector_count = (32 * bpb->BPB_RootEntCnt + bpb->BPB_BytsPerSec - 1) / bpb->BPB_BytsPerSec;
     fc->fatfs.data_sector_start = fc->fatfs.root_sector_start + fc->fatfs.root_sector_count;
-    fc->fatfs.data_sector_count = bpb->BPB_TotSec16 - fc->fatfs.data_sector_start;
+    fc->fatfs.data_sector_count = BPB_TotSecxx - fc->fatfs.data_sector_start;
 
     printf("\r\n");
     printf("fats_sector_start %d.\r\n", fc->fatfs.fats_sector_start);
