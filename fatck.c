@@ -95,9 +95,29 @@
 #define IS_CURRENT_DIR(x)   ((x[0] == 0x2E) && (x[1] == 0x20))
 #define IS_PARENTS_DIR(x)   ((x[0] == 0x2E) && (x[1] == 0x2E) && (x[2] == 0x20))
 
+// fatfs type
 #define FAT_TYPE_FAT12      (12)
 #define FAT_TYPE_FAT16      (16)
 #define FAT_TYPE_FAT32      (32)
+
+// the range of FAT values and meaning for each FAT type
+#define FAT12_CLUS_FRE(x)   ((x) == 0x000)
+#define FAT12_CLUS_RVD(x)   ((x) == 0x001)
+#define FAT12_CLUS_USE(x)   ((x) >= 0x002 && (x) <= 0xFF6)
+#define FAT12_CLUS_BAD(x)   ((x) == 0xFF7)
+#define FAT12_CLUS_END(x)   ((x) >= 0xFF8 && (x) <= 0xFFF)
+
+#define FAT16_CLUS_FRE(x)   ((x) == 0x0000)
+#define FAT16_CLUS_RVD(x)   ((x) == 0x0001)
+#define FAT16_CLUS_USE(x)   ((x) >= 0x0002 && (x) <= 0xFFF6)
+#define FAT16_CLUS_BAD(x)   ((x) == 0xFFF7)
+#define FAT16_CLUS_END(x)   ((x) >= 0xFFF8 && (x) <= 0xFFFF)
+
+#define FAT32_CLUS_FRE(x)   ((x) == 0x00000000)
+#define FAT32_CLUS_RVD(x)   ((x) == 0x00000001)
+#define FAT32_CLUS_USE(x)   ((x) >= 0x00000002 && (x) <= 0x0FFFFFF6)
+#define FAT32_CLUS_BAD(x)   ((x) == 0x0FFFFFF7)
+#define FAT32_CLUS_END(x)   ((x) >= 0x0FFFFFF8 && (x) <= 0x0FFFFFFF)
 
 #define FAT_FSINFO_FREECNT  (488)
 #define FAT_FSINFO_NEXTFREE (492)
@@ -390,25 +410,25 @@ static int fat_fats_check(fat_ck_t* fc, uint32_t start, uint32_t end)
         if (result == sizeof(fat_info))
         {
             value = FAT_GET_UINT16(&fat_info[0]);
-            if (value == 0x0000)
+            if (FAT16_CLUS_FRE(value))
             {
                 printf("Addr [0x%08X - 0x%08X]: %-4d Clusters Free.\r\n", index_addr, index_addr, 1);
                 break;
             }
-            else if (value == 0x0001)
+            else if (FAT16_CLUS_RVD(value))
             {
                 printf("Addr [0x%08X - 0x%08X]: %-4d Clusters Reserved.\r\n", index_addr, index_addr, 1);
             }
-            else if ((value > 0x0002) && (value <= 0xFFF6))
+            else if (FAT16_CLUS_USE(value))
             {
                 count = count + 1;
                 start_addr = (start_addr == 0) ? index_addr : start_addr;
             }
-            else if (value == 0xFFF7)
+            else if (FAT16_CLUS_BAD(value))
             {
                 printf("Addr [0x%08X - 0x%08X]: %-4d Clusters Bad.\r\n", index_addr, index_addr, 1);
             }
-            else if ((value >= 0xFFF8) && (value <= 0xFFFF))
+            else if (FAT16_CLUS_END(value))
             {
                 count = (start_addr == 0) ? 1 : count + 1;
                 start_addr = (start_addr == 0) ? index_addr : start_addr;
@@ -441,26 +461,26 @@ static int fat_fats_count(fat_ck_t* fc, uint32_t index)
         if (result == sizeof(fat_info))
         {
             value = FAT_GET_UINT16(&fat_info[0]);
-            if (value == 0x0000)
+            if (FAT16_CLUS_FRE(value))
             {
                 count = 0;
                 break;
             }
-            else if (value == 0x0001)
+            else if (FAT16_CLUS_RVD(value))
             {
                 count = 0;
                 break;
             }
-            else if ((value > 0x0002) && (value <= 0xFFF6))
+            else if (FAT16_CLUS_USE(value))
             {
                 count = count + 1;
             }
-            else if (value == 0xFFF7)
+            else if (FAT16_CLUS_BAD(value))
             {
                 fat_addr = fat_addr + sizeof(fat_info);
                 continue;
             }
-            else if ((value >= 0xFFF8) && (value <= 0xFFFF))
+            else if (FAT16_CLUS_END(value))
             {
                 count = count + 1;
                 break;
