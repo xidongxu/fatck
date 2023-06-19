@@ -66,21 +66,20 @@
 #define SFN_EXTE_LOW_CASE   (0x10)
 #define SFN_ALLS_LOW_CASE   (0x18)
 
-#ifndef FAT_DPT_ADDRESS
 #define FAT_DPT_ADDRESS     (0x1BE)
-#endif
-#ifndef FAT_DIR_ENTRY_SIZE
-#define FAT_DIR_ENTRY_SIZE  (32)
-#endif
-#ifndef FAT16_INFO_SIZE
-#define FAT16_INFO_SIZE     (2)
-#endif
-#ifndef FAT_SFN_SIZE
-#define FAT_SFN_SIZE        (13)
-#endif
-#ifndef FAT_LFN_SIZE
+#define FAT_DIR_ENTRY_SIZE  (0x20)
+#define FAT16_INFO_SIZE     (0x02)
+
+// short file name buffer length (include '.' and '\0')
+#define FAT_SFN_SIZE        (0x0D)
+// short file name body field (offset from 0 to 7)
+#define FAT_SFN_BODY_START  (0x00)
+#define FAT_SFN_BODY_END    (0x07)
+// short file name extension field (offset from 8 to 10)
+#define FAT_SFN_EXTE_START  (0x08)
+#define FAT_SFN_EXTE_END    (0x0A)
+// long file name buffer length
 #define FAT_LFN_SIZE        (256)
-#endif
 
 #define FAT_TYPE_FAT12      (12)
 #define FAT_TYPE_FAT16      (16)
@@ -523,23 +522,23 @@ static int fat_sfn_read(char name[FAT_SFN_SIZE], uint8_t attr)
     switch (attr)
     {
     case SFN_BODY_LOW_CASE:
-        start = 0x00; limit = 0x08;
+        start = FAT_SFN_BODY_START; limit = FAT_SFN_BODY_END;
         break;
     case SFN_EXTE_LOW_CASE:
-        start = 0x08; limit = 0x0B;
+        start = FAT_SFN_EXTE_START; limit = FAT_SFN_EXTE_END;
         break;
     case SFN_ALLS_LOW_CASE:
-        start = 0x00; limit = 0x0B;
+        start = FAT_SFN_BODY_START; limit = FAT_SFN_EXTE_END;
         break;
     default:
-        start = 0x00; limit = 0x00;
+        start = FAT_SFN_BODY_START; limit = FAT_SFN_BODY_START;
         break;
     }
     memset(temp, 0, FAT_SFN_SIZE);
     // uper char transfer to lower char.
     for (index = 0; ((index < FAT_SFN_SIZE) && (useds < FAT_SFN_SIZE)); index++)
     {
-        if ((index >= start) && (index < limit) && (name[index] >= 'A') && (name[index] <= 'Z'))
+        if ((index >= start) && (index <= limit) && (name[index] >= 'A') && (name[index] <= 'Z'))
         {
             name[index] = tolower(name[index]);
         }
@@ -548,7 +547,7 @@ static int fat_sfn_read(char name[FAT_SFN_SIZE], uint8_t attr)
             temp[useds] = name[index];
             useds = useds + 1;
         }
-        if (index == 0x07)
+        if (index == FAT_SFN_BODY_END)
         {
             point = useds;
             temp[useds] = '.';
