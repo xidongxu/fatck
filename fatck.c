@@ -78,8 +78,15 @@
 // short file name extension field (offset from 8 to 10)
 #define FAT_SFN_EXTE_START  (0x08)
 #define FAT_SFN_EXTE_END    (0x0A)
+
 // long file name buffer length
 #define FAT_LFN_SIZE        (256)
+#define FAT_LFN_1_START     (0x01)
+#define FAT_LFN_1_END       (0x0A)
+#define FAT_LFN_2_START     (0x0E)
+#define FAT_LFN_2_END       (0x19)
+#define FAT_LFN_3_START     (0x1C)
+#define FAT_LFN_3_END       (0x1F)
 
 #define FAT_TYPE_FAT12      (12)
 #define FAT_TYPE_FAT16      (16)
@@ -473,23 +480,24 @@ static int fat_lfn_read(fat_ck_t* fc, uint32_t start, uint32_t count, uint8_t *n
         result = fat_dev_read(fc->device, (sfn_addr - (sizeof(dir_info) * index)), dir_info, sizeof(dir_info));
         if ((result == sizeof(dir_info)) && (dir_info[0] != '\0'))
         {
-            for (i = 0x01; (i < 0x0B) && (j < size); i = i + 2, j = j + 1)
+            // long file name field 1
+            for (i = FAT_LFN_1_START; (i <= FAT_LFN_1_END) && (j < size); i = i + 2, j = j + 1)
             {
                 if (dir_info[i] != 0xFF)
                 {
                     name[j] = dir_info[i];
                 }
             }
-
-            for (i = 0x0E; (i < 0x1A) && (j < size); i = i + 2, j = j + 1)
+            // long file name field 2
+            for (i = FAT_LFN_2_START; (i <= FAT_LFN_2_END) && (j < size); i = i + 2, j = j + 1)
             {
                 if (dir_info[i] != 0xFF)
                 {
                     name[j] = dir_info[i];
                 }
             }
-
-            for (i = 0x1C; (i < 0x20) && (j < size); i = i + 2, j = j + 1)
+            // long file name field 3
+            for (i = FAT_LFN_3_START; (i <= FAT_LFN_3_END) && (j < size); i = i + 2, j = j + 1)
             {
                 if (dir_info[i] != 0xFF)
                 {
