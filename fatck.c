@@ -80,13 +80,20 @@
 #define FAT_SFN_EXTE_END    (0x0A)
 
 // long file name buffer length
-#define FAT_LFN_SIZE        (256)
+#define FAT_LFN_SIZE        (0x100)
+// long file name field 1
 #define FAT_LFN_1_START     (0x01)
 #define FAT_LFN_1_END       (0x0A)
+// long file name field 2
 #define FAT_LFN_2_START     (0x0E)
 #define FAT_LFN_2_END       (0x19)
+// long file name field 3
 #define FAT_LFN_3_START     (0x1C)
 #define FAT_LFN_3_END       (0x1F)
+
+// dir is . or ..
+#define IS_CURRENT_DIR(x)   ((x[0] == 0x2E) && (x[1] == 0x20))
+#define IS_PARENTS_DIR(x)   ((x[0] == 0x2E) && (x[1] == 0x2E) && (x[2] == 0x20))
 
 #define FAT_TYPE_FAT12      (12)
 #define FAT_TYPE_FAT16      (16)
@@ -600,8 +607,7 @@ static int fat_dirs_check(fat_ck_t* fc, uint32_t start, uint32_t end)
         if ((result == sizeof(dir_info)) && (dir_info[0] != '\0'))
         {
             // this is "." or ".." dir
-            if (((dir_info[0] == 0x2E) && (dir_info[1] == 0x20)) || \
-                ((dir_info[0] == 0x2E) && (dir_info[1] == 0x2E) && (dir_info[2] == 0x20)))
+            if (IS_CURRENT_DIR(dir_info) || IS_PARENTS_DIR(dir_info))
             {
                 start = start + sizeof(dir_info);
                 continue;
